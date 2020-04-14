@@ -31,10 +31,12 @@ def start(bot, update):
 
 def button(bot, update):
     query = update.callback_query
-    bot.edit_message_text(text="Selected option: {}".format(query.data),
-                          chat_id=query.message.chat_id,
-                          message_id=query.message.message_id)
-    return 'START'
+    bot.edit_message_text(
+        text=f'Selected option: {query.data}',
+        chat_id=query.message.chat_id,
+        message_id=query.message.message_id
+    )
+    return 'HANDLE_MENU'
 
 
 def handle_menu(bot, update):
@@ -55,7 +57,7 @@ def handle_users_reply(bot, update):
     if user_reply == '/start':
         user_state = 'START'
     else:
-        user_state = db.get(chat_id).decode("utf-8")
+        user_state = db.get(chat_id)
 
     
     states_functions = {
@@ -88,7 +90,7 @@ def get_database_connection():
 
 
 if __name__ == '__main__':
-    token = os.getenv("TELEGRAM_TOKEN")
+    token = os.getenv('TELEGRAM_TOKEN')
     updater = Updater(token)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CallbackQueryHandler(handle_users_reply))
