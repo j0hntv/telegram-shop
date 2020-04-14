@@ -28,5 +28,9 @@ def add_product_to_cart(token, user_id, product_id, quantity):
     return response.json()['data']
 
 
-def get_a_cart():
-    pass
+def get_a_cart(token, user_id):
+    headers = {'Authorization': f'Bearer {token}'}
+    url = f'https://api.moltin.com/v2/carts/{user_id}'
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    return response.json()['data']
