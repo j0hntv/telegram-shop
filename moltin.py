@@ -13,9 +13,14 @@ def get_oauth_access_token(client_id, client_secret):
     return access_token
 
 
-def get_products(token):
+def get_products(token, product_id=None):
+    
     headers = {'Authorization': f'Bearer {token}'}
-    url = 'https://api.moltin.com/v2/products'
+    if product_id:
+        url = f'https://api.moltin.com/v2/products/{product_id}'
+    else:
+        url = 'https://api.moltin.com/v2/products'
+    
     response = requests.get(url, headers=headers)
     response.raise_for_status()
     return response.json()['data']
@@ -46,3 +51,11 @@ def get_a_cart(token, user_id):
     response = requests.get(url, headers=headers)
     response.raise_for_status()
     return response.json()['data']
+
+
+def get_image_url(token, image_id):
+    headers = {'Authorization': f'Bearer {token}'}
+    url = f'https://api.moltin.com/v2/files/{image_id}'
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    return response.json()['data']['link']['href']

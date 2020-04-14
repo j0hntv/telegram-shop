@@ -2,6 +2,7 @@ import logging
 import os
 import redis
 import requests
+import telegram
 import moltin
 from dotenv import load_dotenv
 from telegram.ext import Filters, Updater
@@ -20,27 +21,37 @@ REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
 
 _database = None
 
+
 def start(bot, update):
     products_response = moltin.get_products(MOLTIN_TOKEN)
     products = {product['name']: product['id'] for product in products_response}
     keyboard = [[InlineKeyboardButton(key, callback_data=value)] for key, value in products.items()]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text('Please choose:', reply_markup=reply_markup)
-    return 'BUTTON'
-
-
-def button(bot, update):
-    query = update.callback_query
-    bot.edit_message_text(
-        text=f'Selected option: {query.data}',
-        chat_id=query.message.chat_id,
-        message_id=query.message.message_id
-    )
     return 'HANDLE_MENU'
 
 
 def handle_menu(bot, update):
-    pass
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    message_id = query.message.message_id
+    product_id = query.data
+
+    product = moltin.get_products(MOLTIN_TOKEN, product_id)
+
+    name = product['name']
+    description = product['description']
+    weight = product['weight']['kg']
+    price = product['meta']['display_price']['with_tax']['formatted']
+    image_id = product['relationships']['main_image']['data']['id']
+    image_url = moltin.get_image_url(MOLTIN_TOKEN, image_id)
+
+    caption = f'*{name}*\n_{description}_\n{weight} kg.\n\n*{price}*'
+
+    bot.send_photo(chat_id=chat_id, photo=image_url, caption=caption, parse_mode=telegram.ParseMode.MARKDOWN)
+    bot.delete_message(chat_id=chat_id, message_id=message_id)
+
+    return 'START'
 
 
 def handle_users_reply(bot, update):
@@ -62,7 +73,6 @@ def handle_users_reply(bot, update):
     
     states_functions = {
         'START': start,
-        'BUTTON': button,
         'HANDLE_MENU': handle_menu
     }
     state_handler = states_functions[user_state]
@@ -71,6 +81,7 @@ def handle_users_reply(bot, update):
         db.set(chat_id, next_state)
     except Exception as err:
         print(err)
+
 
 def get_database_connection():
     global _database
