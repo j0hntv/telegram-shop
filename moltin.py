@@ -1,6 +1,18 @@
 import requests
 
 
+def get_oauth_access_token(client_id, client_secret):
+    data = {
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'grant_type': 'client_credentials'
+    }
+    response = requests.post('https://api.moltin.com/oauth/access_token', data=data)
+    response.raise_for_status()
+    access_token = response.json()['access_token']
+    return access_token
+
+
 def get_products(token):
     headers = {'Authorization': f'Bearer {token}'}
     url = 'https://api.moltin.com/v2/products'
