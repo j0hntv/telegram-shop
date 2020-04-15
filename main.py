@@ -38,15 +38,10 @@ def handle_menu(bot, update):
     product_id = query.data
 
     product = moltin.get_products(MOLTIN_TOKEN, product_id)
-
-    name = product['name']
-    description = product['description']
-    weight = product['weight']['kg']
-    price = product['meta']['display_price']['with_tax']['formatted']
     image_id = product['relationships']['main_image']['data']['id']
     image_url = moltin.get_image_url(MOLTIN_TOKEN, image_id)
 
-    caption = f'*{name}*\n_{description}_\n{weight} kg.\n\n*{price}*'
+    caption = moltin.get_product_markdown_output(product)
 
     bot.send_photo(chat_id=chat_id, photo=image_url, caption=caption, parse_mode=telegram.ParseMode.MARKDOWN)
     bot.delete_message(chat_id=chat_id, message_id=message_id)

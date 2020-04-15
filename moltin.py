@@ -59,3 +59,12 @@ def get_image_url(token, image_id):
     response = requests.get(url, headers=headers)
     response.raise_for_status()
     return response.json()['data']['link']['href']
+
+
+def get_product_markdown_output(product):
+    name = product['name']
+    description = product['description']
+    weight = product['weight']['kg']
+    price = product['meta']['display_price']['with_tax']['formatted']
+    output = f'*{name}*\n_{description}_\n{weight} kg\n\n*{price}*'
+    return output
