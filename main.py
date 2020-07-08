@@ -1,9 +1,9 @@
 import logging
 import os
 import redis
-import requests
 import telegram
 import moltin
+
 from dotenv import load_dotenv
 from telegram.ext import Filters, Updater
 from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler
@@ -25,9 +25,25 @@ _database = None
 def start(bot, update):
     products_response = moltin.get_products(MOLTIN_TOKEN)
     products = {product['name']: product['id'] for product in products_response}
-    keyboard = [[InlineKeyboardButton(key, callback_data=value)] for key, value in products.items()]
+    keyboard = [
+        [InlineKeyboardButton(product_name, callback_data=product_id)] for product_name, product_id in products.items()
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text('Please choose:', reply_markup=reply_markup)
+
+    if update.message:
+        update.message.reply_text(
+            'Выбирайте, пожалуйста:',
+            reply_markup=reply_markup
+        )
+    else:
+        chat_id = update.callback_query.message.chat_id
+        message_id = update.callback_query.message.message_id
+        bot.send_message(
+            chat_id=chat_id,
+            reply_markup=reply_markup,
+            text='Выбирайте, пожалуйста:'
+        )
+
     return 'HANDLE_MENU'
 
 
@@ -43,10 +59,30 @@ def handle_menu(bot, update):
 
     caption = moltin.get_product_markdown_output(product)
 
-    bot.send_photo(chat_id=chat_id, photo=image_url, caption=caption, parse_mode=telegram.ParseMode.MARKDOWN)
+    keyboard = [[InlineKeyboardButton('Назад', callback_data='back')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     bot.delete_message(chat_id=chat_id, message_id=message_id)
 
-    return 'START'
+    bot.send_photo(
+        chat_id=chat_id,
+        photo=image_url,
+        caption=caption,
+        parse_mode=telegram.ParseMode.MARKDOWN,
+        reply_markup=reply_markup
+    )
+
+    return 'HANDLE_DESCRIPTION'
+
+
+def handle_description(bot, update):
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    message_id = query.message.message_id
+    bot.delete_message(chat_id=chat_id, message_id=message_id)
+    if query.data == 'back':
+        start(bot, update)
+        return 'HANDLE_MENU'
 
 
 def handle_users_reply(bot, update):
@@ -68,7 +104,8 @@ def handle_users_reply(bot, update):
     
     states_functions = {
         'START': start,
-        'HANDLE_MENU': handle_menu
+        'HANDLE_MENU': handle_menu,
+        'HANDLE_DESCRIPTION': handle_description
     }
     state_handler = states_functions[user_state]
     try:
@@ -96,8 +133,7 @@ def get_database_connection():
 
 
 if __name__ == '__main__':
-    token = os.getenv('TELEGRAM_TOKEN')
-    updater = Updater(token)
+    updater = Updater(TELEGRAM_TOKEN)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CallbackQueryHandler(handle_users_reply))
     dispatcher.add_handler(MessageHandler(Filters.text, handle_users_reply))
