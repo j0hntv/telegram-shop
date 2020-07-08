@@ -37,7 +37,6 @@ def start(bot, update):
         )
     else:
         chat_id = update.callback_query.message.chat_id
-        message_id = update.callback_query.message.message_id
         bot.send_message(
             chat_id=chat_id,
             reply_markup=reply_markup,
@@ -81,8 +80,7 @@ def handle_description(bot, update):
     message_id = query.message.message_id
     bot.delete_message(chat_id=chat_id, message_id=message_id)
     if query.data == 'back':
-        start(bot, update)
-        return 'HANDLE_MENU'
+        return start(bot, update)
 
 
 def handle_users_reply(bot, update):
