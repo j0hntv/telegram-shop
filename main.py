@@ -58,7 +58,10 @@ def handle_menu(bot, update):
 
     caption = moltin.get_product_markdown_output(product)
 
-    keyboard = [[InlineKeyboardButton('Назад', callback_data='back')]]
+    keyboard = [
+        [InlineKeyboardButton(f'{count} шт.', callback_data=f'{product["name"]}/{product_id}/{count}') for count in range(1, 4)],
+        [InlineKeyboardButton('Назад', callback_data='back')]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     bot.delete_message(chat_id=chat_id, message_id=message_id)
@@ -78,9 +81,14 @@ def handle_description(bot, update):
     query = update.callback_query
     chat_id = query.message.chat_id
     message_id = query.message.message_id
-    bot.delete_message(chat_id=chat_id, message_id=message_id)
     if query.data == 'back':
+        bot.delete_message(chat_id=chat_id, message_id=message_id)
         return start(bot, update)
+    else:
+        name, product_id, quantity = query.data.split('/')
+        moltin.add_product_to_cart(MOLTIN_TOKEN, chat_id, product_id, int(quantity))
+        bot.send_message(chat_id=chat_id, text=f'Добавлено:\n{name} {quantity} шт.')
+        return 'HANDLE_DESCRIPTION'
 
 
 def handle_users_reply(bot, update):
