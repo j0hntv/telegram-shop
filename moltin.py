@@ -53,6 +53,29 @@ def get_a_cart(token, user_id):
     return response.json()['data']
 
 
+def get_cart_items(token, user_id):
+    headers = {'Authorization': f'Bearer {token}'}
+    url = f'https://api.moltin.com/v2/carts/{user_id}/items'
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    return response.json()['data']
+
+
+def get_formatted_cart_items(cart, cart_items):
+    items = []
+    for item in cart_items:
+        name = item['name']
+        description = item['description']
+        quantity = item['quantity']
+        cost = item['meta']['display_price']['with_tax']['value']['formatted']
+        items.append(f'{name}: *{quantity}* шт.\n_{description}_\n*{cost}*')
+
+    total_cost = cart['meta']['display_price']['with_tax']['formatted']
+    items.append(f'\nИтого: *{total_cost}*')
+
+    return '\n\n'.join(items)
+
+
 def get_image_url(token, image_id):
     headers = {'Authorization': f'Bearer {token}'}
     url = f'https://api.moltin.com/v2/files/{image_id}'
