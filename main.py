@@ -59,7 +59,7 @@ def handle_menu(bot, update):
     caption = moltin.get_product_markdown_output(product)
 
     keyboard = [
-        [InlineKeyboardButton(f'{count} шт.', callback_data=f'button/{product_id}/{count}') for count in range(1, 4)],
+        [InlineKeyboardButton(f'{quantity} шт.', callback_data=f'button/{product_id}/{quantity}') for quantity in range(1, 4)],
         [InlineKeyboardButton('Корзина', callback_data='cart')],
         [InlineKeyboardButton('Назад', callback_data='back')]
     ]
@@ -89,7 +89,22 @@ def handle_description(bot, update):
         return start(bot, update)
 
     elif action[0] == 'cart':
-        return handle_cart(bot, update)
+        cart = moltin.get_a_cart(MOLTIN_TOKEN, '137028020')
+        cart_items = moltin.get_cart_items(MOLTIN_TOKEN, '137028020')
+        cart_items_formatted = moltin.get_formatted_cart_items(cart, cart_items)
+
+        keyboard = [
+            [InlineKeyboardButton('В главное меню', callback_data='menu')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        bot.delete_message(chat_id=chat_id, message_id=message_id)
+        bot.send_message(
+            chat_id=chat_id,
+            text=cart_items_formatted,
+            reply_markup=reply_markup,
+            parse_mode=telegram.ParseMode.MARKDOWN)
+
+        return 'HANDLE_DESCRIPTION'
 
     elif action[0] == 'button':
         product_id, quantity = action[1], action[2]
@@ -98,26 +113,7 @@ def handle_description(bot, update):
 
 
 def handle_cart(bot, update):
-    query = update.callback_query
-    chat_id = query.message.chat_id
-    message_id = query.message.message_id
-
-    cart = moltin.get_a_cart(MOLTIN_TOKEN, '137028020')
-    cart_items = moltin.get_cart_items(MOLTIN_TOKEN, '137028020')
-    cart_items_formatted = moltin.get_formatted_cart_items(cart, cart_items)
-
-    keyboard = [
-        [InlineKeyboardButton('В главное меню', callback_data='menu')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    bot.delete_message(chat_id=chat_id, message_id=message_id)
-    bot.send_message(
-        chat_id=chat_id,
-        text=cart_items_formatted,
-        reply_markup=reply_markup,
-        parse_mode=telegram.ParseMode.MARKDOWN)
-
-    return 'HANDLE_DESCRIPTION'
+    pass
 
 
 def handle_users_reply(bot, update):
