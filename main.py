@@ -50,25 +50,25 @@ def handle_menu(bot, update):
     query = update.callback_query
     chat_id = query.message.chat_id
     message_id = query.message.message_id
-    product_id = query.data
 
+    product_id = query.data
     product = moltin.get_products(MOLTIN_TOKEN, product_id)
-    image_id = product['relationships']['main_image']['data']['id']
-    image_url = moltin.get_image_url(MOLTIN_TOKEN, image_id)
+    product_image_id = product['relationships']['main_image']['data']['id']
+    product_image_url = moltin.get_image_url(MOLTIN_TOKEN, product_image_id)
 
     caption = moltin.get_product_markdown_output(product)
 
     keyboard = [
-        [InlineKeyboardButton(f'{count} шт.', callback_data=f'{product["name"]}/{product_id}/{count}') for count in range(1, 4)],
+        [InlineKeyboardButton(f'{count} шт.', callback_data=f'button/{product_id}/{count}') for count in range(1, 4)],
+        [InlineKeyboardButton('Корзина', callback_data='cart')],
         [InlineKeyboardButton('Назад', callback_data='back')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     bot.delete_message(chat_id=chat_id, message_id=message_id)
-
     bot.send_photo(
         chat_id=chat_id,
-        photo=image_url,
+        photo=product_image_url,
         caption=caption,
         parse_mode=telegram.ParseMode.MARKDOWN,
         reply_markup=reply_markup
@@ -81,14 +81,43 @@ def handle_description(bot, update):
     query = update.callback_query
     chat_id = query.message.chat_id
     message_id = query.message.message_id
-    if query.data == 'back':
+
+    action = query.data.split('/')
+
+    if action[0] in ('back', 'menu'):
         bot.delete_message(chat_id=chat_id, message_id=message_id)
         return start(bot, update)
-    else:
-        name, product_id, quantity = query.data.split('/')
+
+    elif action[0] == 'cart':
+        return handle_cart(bot, update)
+
+    elif action[0] == 'button':
+        product_id, quantity = action[1], action[2]
         moltin.add_product_to_cart(MOLTIN_TOKEN, chat_id, product_id, int(quantity))
-        bot.send_message(chat_id=chat_id, text=f'Добавлено:\n{name} {quantity} шт.')
         return 'HANDLE_DESCRIPTION'
+
+
+def handle_cart(bot, update):
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    message_id = query.message.message_id
+
+    cart = moltin.get_a_cart(MOLTIN_TOKEN, '137028020')
+    cart_items = moltin.get_cart_items(MOLTIN_TOKEN, '137028020')
+    cart_items_formatted = moltin.get_formatted_cart_items(cart, cart_items)
+
+    keyboard = [
+        [InlineKeyboardButton('В главное меню', callback_data='menu')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    bot.delete_message(chat_id=chat_id, message_id=message_id)
+    bot.send_message(
+        chat_id=chat_id,
+        text=cart_items_formatted,
+        reply_markup=reply_markup,
+        parse_mode=telegram.ParseMode.MARKDOWN)
+
+    return 'HANDLE_DESCRIPTION'
 
 
 def handle_users_reply(bot, update):
@@ -111,7 +140,8 @@ def handle_users_reply(bot, update):
     states_functions = {
         'START': start,
         'HANDLE_MENU': handle_menu,
-        'HANDLE_DESCRIPTION': handle_description
+        'HANDLE_DESCRIPTION': handle_description,
+        'HANDLE_CART': handle_cart
     }
     state_handler = states_functions[user_state]
     try:
