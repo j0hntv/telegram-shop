@@ -84,27 +84,13 @@ def handle_description(bot, update):
 
     action = query.data.split('/')
 
-    if action[0] in ('back', 'menu'):
+    if action[0] == 'back':
         bot.delete_message(chat_id=chat_id, message_id=message_id)
         return start(bot, update)
 
     elif action[0] == 'cart':
-        cart = moltin.get_a_cart(MOLTIN_TOKEN, chat_id)
-        cart_items = moltin.get_cart_items(MOLTIN_TOKEN, chat_id)
-        cart_items_formatted = moltin.get_formatted_cart_items(cart, cart_items)
-
-        keyboard = [
-            [InlineKeyboardButton(f'❌ Удалить {product["name"]}', callback_data=product['id'])] for product in cart_items
-        ] + [[InlineKeyboardButton('◀️ В главное меню', callback_data='menu')]]
-
-        reply_markup = InlineKeyboardMarkup(keyboard)
         bot.delete_message(chat_id=chat_id, message_id=message_id)
-        bot.send_message(
-            chat_id=chat_id,
-            text=cart_items_formatted,
-            reply_markup=reply_markup,
-            parse_mode=telegram.ParseMode.MARKDOWN)
-
+        send_cart_keyboard(bot, chat_id)
         return 'HANDLE_CART'
 
     elif action[0] == 'quantity':
@@ -118,13 +104,16 @@ def handle_cart(bot, update):
     chat_id = query.message.chat_id
     message_id = query.message.message_id
 
-    action = query.data
+    bot.delete_message(chat_id=chat_id, message_id=message_id)
 
-    if action == 'menu':
-        bot.delete_message(chat_id=chat_id, message_id=message_id)
+    if query.data == 'menu':
         return start(bot, update)
 
-    return 'HANDLE_DESCRIPTION'
+    product_id = query.data
+    moltin.remove_cart_item(MOLTIN_TOKEN, chat_id, product_id)
+
+    send_cart_keyboard(bot, chat_id)
+    return 'HANDLE_CART'
 
 
 def handle_users_reply(bot, update):
@@ -156,6 +145,34 @@ def handle_users_reply(bot, update):
         db.set(chat_id, next_state)
     except Exception as err:
         print(err)
+
+
+def send_cart_keyboard(bot, chat_id):
+    cart = moltin.get_a_cart(MOLTIN_TOKEN, chat_id)
+    cart_items = moltin.get_cart_items(MOLTIN_TOKEN, chat_id)
+    menu_button = [[InlineKeyboardButton('◀️ Меню', callback_data='menu')]]
+
+    if not cart_items:
+        bot.send_message(
+            chat_id=chat_id,
+            text='В корзине ничего нет :(',
+            reply_markup=InlineKeyboardMarkup(menu_button),
+        )
+
+        return
+
+    cart_items_formatted = moltin.get_formatted_cart_items(cart, cart_items)
+    keyboard = [
+        [InlineKeyboardButton(f'❌ Удалить {product["name"]}', callback_data=product['id'])] for product in cart_items
+    ] + menu_button
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    bot.send_message(
+        chat_id=chat_id,
+        text=cart_items_formatted,
+        reply_markup=reply_markup,
+        parse_mode=telegram.ParseMode.MARKDOWN
+    )
 
 
 def get_database_connection():
