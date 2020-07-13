@@ -59,9 +59,9 @@ def handle_menu(bot, update):
     caption = moltin.get_product_markdown_output(product)
 
     keyboard = [
-        [InlineKeyboardButton(f'{quantity} шт.', callback_data=f'button/{product_id}/{quantity}') for quantity in range(1, 4)],
-        [InlineKeyboardButton('Корзина', callback_data='cart')],
-        [InlineKeyboardButton('Назад', callback_data='back')]
+        [InlineKeyboardButton(f'{quantity} шт.', callback_data=f'quantity/{product_id}/{quantity}') for quantity in range(1, 4)],
+        [InlineKeyboardButton('🛒 Корзина', callback_data='cart')],
+        [InlineKeyboardButton('◀️ Назад', callback_data='back')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -89,13 +89,14 @@ def handle_description(bot, update):
         return start(bot, update)
 
     elif action[0] == 'cart':
-        cart = moltin.get_a_cart(MOLTIN_TOKEN, '137028020')
-        cart_items = moltin.get_cart_items(MOLTIN_TOKEN, '137028020')
+        cart = moltin.get_a_cart(MOLTIN_TOKEN, chat_id)
+        cart_items = moltin.get_cart_items(MOLTIN_TOKEN, chat_id)
         cart_items_formatted = moltin.get_formatted_cart_items(cart, cart_items)
 
         keyboard = [
-            [InlineKeyboardButton('В главное меню', callback_data='menu')]
-        ]
+            [InlineKeyboardButton(f'❌ Удалить {product["name"]}', callback_data=product['id'])] for product in cart_items
+        ] + [[InlineKeyboardButton('◀️ В главное меню', callback_data='menu')]]
+
         reply_markup = InlineKeyboardMarkup(keyboard)
         bot.delete_message(chat_id=chat_id, message_id=message_id)
         bot.send_message(
@@ -104,16 +105,26 @@ def handle_description(bot, update):
             reply_markup=reply_markup,
             parse_mode=telegram.ParseMode.MARKDOWN)
 
-        return 'HANDLE_DESCRIPTION'
+        return 'HANDLE_CART'
 
-    elif action[0] == 'button':
+    elif action[0] == 'quantity':
         product_id, quantity = action[1], action[2]
         moltin.add_product_to_cart(MOLTIN_TOKEN, chat_id, product_id, int(quantity))
         return 'HANDLE_DESCRIPTION'
 
 
 def handle_cart(bot, update):
-    pass
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    message_id = query.message.message_id
+
+    action = query.data
+
+    if action == 'menu':
+        bot.delete_message(chat_id=chat_id, message_id=message_id)
+        return start(bot, update)
+
+    return 'HANDLE_DESCRIPTION'
 
 
 def handle_users_reply(bot, update):
