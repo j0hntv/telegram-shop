@@ -99,3 +99,18 @@ def get_product_markdown_output(product):
     price = product['meta']['display_price']['with_tax']['formatted']
     output = f'*{name}*\n_{description}_\n{weight} kg\n\n*{price}*'
     return output
+
+
+def create_customer(token, name, email, customer_type='customer'):
+    url = 'https://api.moltin.com/v2/customers'
+    headers = {'Authorization': f'Bearer {token}'}
+    payload = {
+        "data": {
+            "name": name,
+            "email": email,
+            "type": customer_type
+        }
+    }
+    response = requests.post(url, headers=headers, json=payload)
+    response.raise_for_status()
+    return response.json()
