@@ -5,6 +5,7 @@ import telegram
 import moltin
 
 from dotenv import load_dotenv
+from validate_email import validate_email
 from telegram.ext import Filters, Updater
 from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -109,6 +110,13 @@ def handle_cart(bot, update):
     if query.data == 'menu':
         return start(bot, update)
 
+    elif query.data == 'pay':
+        bot.send_message(
+            chat_id=chat_id,
+            text='Пожалуйста, пришлите ваш email:'
+        )
+        return 'HANDLE_WAITING_EMAIL'
+
     product_id = query.data
     moltin.remove_cart_item(MOLTIN_TOKEN, chat_id, product_id)
 
@@ -116,8 +124,31 @@ def handle_cart(bot, update):
     return 'HANDLE_CART'
 
 
+def handle_waiting_email(bot, update):
+    chat_id = update.message.chat_id
+    text = update.message.text
+
+    keyboard = [
+        [InlineKeyboardButton(f'◀️ В меню', callback_data='start')]
+    ]
+
+    if validate_email(text):
+        bot.send_message(
+            chat_id = chat_id,
+            text=f'*Ваш заказ оформлен!*',
+            parse_mode=telegram.ParseMode.MARKDOWN,
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return 'START'
+
+    bot.send_message(
+        chat_id = chat_id,
+        text=f'Кажется, вы неправильно ввели email, повторите пожалуйста:'
+    )
+    return 'HANDLE_WAITING_EMAIL'
+
+
 def handle_users_reply(bot, update):
-    db = get_database_connection()
     if update.message:
         user_reply = update.message.text
         chat_id = update.message.chat_id
@@ -137,7 +168,8 @@ def handle_users_reply(bot, update):
         'START': start,
         'HANDLE_MENU': handle_menu,
         'HANDLE_DESCRIPTION': handle_description,
-        'HANDLE_CART': handle_cart
+        'HANDLE_CART': handle_cart,
+        'HANDLE_WAITING_EMAIL': handle_waiting_email
     }
     state_handler = states_functions[user_state]
     try:
@@ -151,6 +183,7 @@ def send_cart_keyboard(bot, chat_id):
     cart = moltin.get_a_cart(MOLTIN_TOKEN, chat_id)
     cart_items = moltin.get_cart_items(MOLTIN_TOKEN, chat_id)
     menu_button = [[InlineKeyboardButton('◀️ Меню', callback_data='menu')]]
+    pay_button = [[InlineKeyboardButton('🤑 Оплатить', callback_data='pay')]]
 
     if not cart_items:
         bot.send_message(
@@ -164,7 +197,7 @@ def send_cart_keyboard(bot, chat_id):
     cart_items_formatted = moltin.get_formatted_cart_items(cart, cart_items)
     keyboard = [
         [InlineKeyboardButton(f'❌ Удалить {product["name"]}', callback_data=product['id'])] for product in cart_items
-    ] + menu_button
+    ] + pay_button + menu_button
 
     reply_markup = InlineKeyboardMarkup(keyboard)
     bot.send_message(
@@ -193,6 +226,7 @@ def get_database_connection():
 
 
 if __name__ == '__main__':
+    db = get_database_connection()
     updater = Updater(TELEGRAM_TOKEN)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CallbackQueryHandler(handle_users_reply))
