@@ -1,5 +1,6 @@
 # TelegramShop
 Телеграм-бот для продажи товаров на базе интернет-магазина [elasticpath.com](https://www.elasticpath.com/)
+ - [Бот](https://t.me/Dvmn_fish_shop_bot)
 
 ![](.screenshots/01.jpg) ![](.screenshots/02.jpg) ![](.screenshots/03.jpg)
 ### Деплой
