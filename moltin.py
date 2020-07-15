@@ -14,7 +14,6 @@ def get_oauth_access_token(client_id, client_secret):
 
 
 def get_products(token, product_id=None):
-    
     headers = {'Authorization': f'Bearer {token}'}
     if product_id:
         url = f'https://api.moltin.com/v2/products/{product_id}'

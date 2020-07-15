@@ -10,22 +10,14 @@ from telegram.ext import Filters, Updater
 from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-load_dotenv()
 
-CLIENT_ID = os.getenv('CLIENT_ID')
-CLIENT_SECRET = os.getenv('CLIENT_SECRET')
-TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
-MOLTIN_TOKEN = moltin.get_oauth_access_token(CLIENT_ID, CLIENT_SECRET)
-REDIS_HOST = os.getenv('REDIS_HOST')
-REDIS_PORT = os.getenv('REDIS_PORT')
-REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
-
-_database = None
+logger = logging.getLogger('telegram_shop')
 
 
 def start(bot, update):
-    products_response = moltin.get_products(MOLTIN_TOKEN)
-    products = {product['name']: product['id'] for product in products_response}
+    products = {
+        product['name']: product['id'] for product in moltin.get_products(MOLTIN_TOKEN)
+    }
     keyboard = [
         [InlineKeyboardButton(product_name, callback_data=product_id)] for product_name, product_id in products.items()
     ]
@@ -177,8 +169,8 @@ def handle_users_reply(bot, update):
     try:
         next_state = state_handler(bot, update)
         db.set(chat_id, next_state)
-    except Exception as err:
-        print(err)
+    except Exception as error:
+        logger.error(error)
 
 
 def send_cart_keyboard(bot, chat_id):
@@ -211,24 +203,35 @@ def send_cart_keyboard(bot, chat_id):
 
 
 def get_database_connection():
-    global _database
-    if _database is None:
-        _database = redis.Redis(
-            host=REDIS_HOST,
-            port=REDIS_PORT,
-            password=REDIS_PASSWORD,
-            decode_responses=True
-        )
-        try:
-            _database.get('None')
-            print('Redis connected.')
-        except redis.exceptions.RedisError as error:
-            print(error)
-    return _database
+    db = redis.Redis(
+        host=REDIS_HOST,
+        port=REDIS_PORT,
+        password=REDIS_PASSWORD,
+        decode_responses=True
+    )
+
+    try:
+        db.get('None')
+        logger.info('Redis connected.')
+    except redis.exceptions.RedisError as error:
+        logger.error(error)
+
+    return db
 
 
 if __name__ == '__main__':
+    load_dotenv()
+
+    CLIENT_ID = os.getenv('CLIENT_ID')
+    CLIENT_SECRET = os.getenv('CLIENT_SECRET')
+    TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+    MOLTIN_TOKEN = moltin.get_oauth_access_token(CLIENT_ID, CLIENT_SECRET)
+    REDIS_HOST = os.getenv('REDIS_HOST')
+    REDIS_PORT = os.getenv('REDIS_PORT')
+    REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
+
     db = get_database_connection()
+    
     updater = Updater(TELEGRAM_TOKEN)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CallbackQueryHandler(handle_users_reply))
