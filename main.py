@@ -139,6 +139,8 @@ def handle_waiting_email(bot, update):
             parse_mode=telegram.ParseMode.MARKDOWN,
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
+        customer_name = update.message.chat.first_name
+        moltin.create_customer(MOLTIN_TOKEN, name=customer_name, email=text)
         return 'START'
 
     bot.send_message(
