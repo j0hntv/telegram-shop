@@ -89,6 +89,7 @@ def handle_description(bot, update):
     elif action[0] == 'quantity':
         product_id, quantity = action[1], action[2]
         moltin.add_product_to_cart(MOLTIN_TOKEN, chat_id, product_id, int(quantity))
+        update.callback_query.answer('Товар добавлен в корзину')
         return 'HANDLE_DESCRIPTION'
 
 
