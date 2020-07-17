@@ -238,10 +238,9 @@ if __name__ == '__main__':
     REDIS_PORT = os.getenv('REDIS_PORT')
     REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
 
-    moltin_token = partial(moltin.get_oauth_access_token, CLIENT_ID, CLIENT_SECRET)
-
     db = get_database_connection()
-    
+    moltin_token = partial(moltin.get_oauth_access_token, db, CLIENT_ID, CLIENT_SECRET)
+
     updater = Updater(TELEGRAM_TOKEN)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CallbackQueryHandler(handle_users_reply))

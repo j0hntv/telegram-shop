@@ -1,7 +1,12 @@
 import requests
 
 
-def get_oauth_access_token(client_id, client_secret):
+def get_oauth_access_token(db, client_id, client_secret, expires=3000):
+    access_token = db.get('moltin_token')
+
+    if access_token:
+        return access_token
+
     data = {
         'client_id': client_id,
         'client_secret': client_secret,
@@ -10,6 +15,7 @@ def get_oauth_access_token(client_id, client_secret):
     response = requests.post('https://api.moltin.com/oauth/access_token', data=data)
     response.raise_for_status()
     access_token = response.json()['access_token']
+    db.set('moltin_token', access_token, ex=expires)
     return access_token
 
 
