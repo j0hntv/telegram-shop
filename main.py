@@ -6,6 +6,7 @@ import moltin
 
 from dotenv import load_dotenv
 from validate_email import validate_email
+from functools import partial
 from telegram.ext import Filters, Updater
 from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -15,8 +16,9 @@ logger = logging.getLogger('telegram_shop')
 
 
 def start(bot, update):
+    token = moltin_token()
     products = {
-        product['name']: product['id'] for product in moltin.get_products(MOLTIN_TOKEN)
+        product['name']: product['id'] for product in moltin.get_products(token)
     }
     keyboard = [
         [InlineKeyboardButton(product_name, callback_data=product_id)] for product_name, product_id in products.items()
@@ -44,10 +46,12 @@ def handle_menu(bot, update):
     chat_id = query.message.chat_id
     message_id = query.message.message_id
 
+    token = moltin_token()
+
     product_id = query.data
-    product = moltin.get_products(MOLTIN_TOKEN, product_id)
+    product = moltin.get_products(token, product_id)
     product_image_id = product['relationships']['main_image']['data']['id']
-    product_image_url = moltin.get_image_url(MOLTIN_TOKEN, product_image_id)
+    product_image_url = moltin.get_image_url(token, product_image_id)
 
     caption = moltin.get_product_markdown_output(product)
 
@@ -88,7 +92,8 @@ def handle_description(bot, update):
 
     elif action[0] == 'quantity':
         product_id, quantity = action[1], action[2]
-        moltin.add_product_to_cart(MOLTIN_TOKEN, chat_id, product_id, int(quantity))
+        token = moltin_token()
+        moltin.add_product_to_cart(token, chat_id, product_id, int(quantity))
         update.callback_query.answer('Товар добавлен в корзину')
         return 'HANDLE_DESCRIPTION'
 
@@ -111,7 +116,8 @@ def handle_cart(bot, update):
         return 'HANDLE_WAITING_EMAIL'
 
     product_id = query.data
-    moltin.remove_cart_item(MOLTIN_TOKEN, chat_id, product_id)
+    token = moltin_token()
+    moltin.remove_cart_item(token, chat_id, product_id)
 
     send_cart_keyboard(bot, chat_id)
     return 'HANDLE_CART'
@@ -133,7 +139,8 @@ def handle_waiting_email(bot, update):
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
         customer_name = update.message.chat.first_name
-        moltin.create_customer(MOLTIN_TOKEN, name=customer_name, email=text)
+        token = moltin_token()
+        moltin.create_customer(token, name=customer_name, email=text)
         return 'START'
 
     bot.send_message(
@@ -175,8 +182,9 @@ def handle_users_reply(bot, update):
 
 
 def send_cart_keyboard(bot, chat_id):
-    cart = moltin.get_a_cart(MOLTIN_TOKEN, chat_id)
-    cart_items = moltin.get_cart_items(MOLTIN_TOKEN, chat_id)
+    token = moltin_token()
+    cart = moltin.get_a_cart(token, chat_id)
+    cart_items = moltin.get_cart_items(token, chat_id)
     menu_button = [[InlineKeyboardButton('◀️ Меню', callback_data='menu')]]
     pay_button = [[InlineKeyboardButton('🤑 Оплатить', callback_data='pay')]]
 
@@ -226,10 +234,11 @@ if __name__ == '__main__':
     CLIENT_ID = os.getenv('CLIENT_ID')
     CLIENT_SECRET = os.getenv('CLIENT_SECRET')
     TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
-    MOLTIN_TOKEN = moltin.get_oauth_access_token(CLIENT_ID, CLIENT_SECRET)
     REDIS_HOST = os.getenv('REDIS_HOST')
     REDIS_PORT = os.getenv('REDIS_PORT')
     REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
+
+    moltin_token = partial(moltin.get_oauth_access_token, CLIENT_ID, CLIENT_SECRET)
 
     db = get_database_connection()
     
