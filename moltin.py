@@ -21,10 +21,10 @@ def get_oauth_access_token(db, client_id, client_secret, expires=3000):
 
 def get_products(token, product_id=None):
     headers = {'Authorization': f'Bearer {token}'}
+    url = 'https://api.moltin.com/v2/products/'
+
     if product_id:
-        url = f'https://api.moltin.com/v2/products/{product_id}'
-    else:
-        url = 'https://api.moltin.com/v2/products'
+        url += product_id
     
     response = requests.get(url, headers=headers)
     response.raise_for_status()

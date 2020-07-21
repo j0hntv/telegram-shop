@@ -32,11 +32,13 @@ def start(bot, update):
         )
     else:
         chat_id = update.callback_query.message.chat_id
+        message_id = update.callback_query.message.message_id
         bot.send_message(
             chat_id=chat_id,
             reply_markup=reply_markup,
             text='Выбирайте, пожалуйста:'
         )
+        bot.delete_message(chat_id=chat_id, message_id=message_id)
 
     return 'HANDLE_MENU'
 
@@ -62,7 +64,6 @@ def handle_menu(bot, update):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    bot.delete_message(chat_id=chat_id, message_id=message_id)
     bot.send_photo(
         chat_id=chat_id,
         photo=product_image_url,
@@ -70,6 +71,8 @@ def handle_menu(bot, update):
         parse_mode=telegram.ParseMode.MARKDOWN,
         reply_markup=reply_markup
     )
+
+    bot.delete_message(chat_id=chat_id, message_id=message_id)
 
     return 'HANDLE_DESCRIPTION'
 
@@ -82,12 +85,11 @@ def handle_description(bot, update):
     action = query.data.split('/')
 
     if action[0] == 'back':
-        bot.delete_message(chat_id=chat_id, message_id=message_id)
         return start(bot, update)
 
     elif action[0] == 'cart':
-        bot.delete_message(chat_id=chat_id, message_id=message_id)
         send_cart_keyboard(bot, chat_id)
+        bot.delete_message(chat_id=chat_id, message_id=message_id)
         return 'HANDLE_CART'
 
     elif action[0] == 'quantity':
@@ -103,7 +105,6 @@ def handle_cart(bot, update):
     chat_id = query.message.chat_id
     message_id = query.message.message_id
 
-    bot.delete_message(chat_id=chat_id, message_id=message_id)
 
     if query.data == 'menu':
         return start(bot, update)
@@ -113,6 +114,7 @@ def handle_cart(bot, update):
             chat_id=chat_id,
             text='Пожалуйста, пришлите ваш email:'
         )
+        bot.delete_message(chat_id=chat_id, message_id=message_id)
         return 'HANDLE_WAITING_EMAIL'
 
     product_id = query.data
@@ -120,6 +122,7 @@ def handle_cart(bot, update):
     moltin.remove_cart_item(token, chat_id, product_id)
 
     send_cart_keyboard(bot, chat_id)
+    bot.delete_message(chat_id=chat_id, message_id=message_id)
     return 'HANDLE_CART'
 
 
@@ -163,7 +166,10 @@ def handle_users_reply(bot, update):
     if user_reply == '/start':
         user_state = 'START'
     else:
-        user_state = db.get(chat_id)
+        try:
+            user_state = db.get(chat_id)
+        except redis.exceptions.RedisError as error:
+            logger.error(error)
 
     
     states_functions = {
@@ -218,12 +224,6 @@ def get_database_connection():
         password=REDIS_PASSWORD,
         decode_responses=True
     )
-
-    try:
-        db.get('None')
-        logger.info('Redis connected.')
-    except redis.exceptions.RedisError as error:
-        logger.error(error)
 
     return db
 
