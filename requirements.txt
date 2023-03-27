@@ -1,5 +1,5 @@
 python-telegram-bot==11.1.0
 python-dotenv==0.12.0
 requests==2.23.0
-redis==3.4.1
+redis==4.5.3
 validate-email==1.3
